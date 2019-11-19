@@ -1,0 +1,59 @@
+version: "3"
+services:
+
+  #agent:
+  #  image: portainer/agent:latest
+  #  volumes: 
+    #- /var/run/docker.sock:/var/run/docker.sock
+  #  - \\.\docker_engine:\\.\pipe\docker_engine
+  #  networks:
+  #  - agent_network
+
+  traefik:
+    image: traefik:v2.0.5
+    container_name: "traefik"
+    command:
+      - "--accesslog=true"
+      - "--api"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      #- "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      #- "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - frontend
+      - backend
+    labels:    
+      - "traefik.enable=true"
+      # Expose traefik Dashboard service api@internal with basicauth
+      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=web"
+      #- "traefik.http.routers.traefik.middlewares=traefik-auth"
+      #- "traefik.http.middlewares.traefik-auth.basicauth.users=admin:HelloWorld"
+
+  portainer:
+    image: portainer/portainer:1.22.2
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    networks:
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.localhost`)"
+      - "traefik.http.routers.portainer.entrypoints=web"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+  
+networks:
+  frontend:
+  backend:
+
+volumes:
+  portainer_data:
